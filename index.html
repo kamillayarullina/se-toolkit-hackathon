@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QueueLess — Book a TA</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #fce4ec, #f8bbd0, #f48fb1);
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* ===== Layout ===== */
+    .app { display: flex; min-height: 100vh; }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      width: 300px;
+      background: #fff;
+      box-shadow: 2px 0 20px rgba(0,0,0,.08);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+
+    .sidebar h2 {
+      text-align: center;
+      color: #c2185b;
+      padding: 16px 12px 8px;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .sidebar h2 span { font-size: 24px; }
+
+    .sidebar-nav {
+      display: flex;
+      gap: 2px;
+      padding: 8px 12px;
+      border-bottom: 2px solid #fce4ec;
+    }
+
+    .sidebar-nav button {
+      flex: 1;
+      padding: 6px 4px;
+      border: none;
+      background: #fce4ec;
+      color: #c2185b;
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: background .15s;
+    }
+    .sidebar-nav button.active { background: #f48fb1; color: #fff; }
+    .sidebar-nav button:hover { background: #f8bbd0; }
+
+    .ta-select-section {
+      padding: 0 12px 8px;
+      border-bottom: 2px solid #fce4ec;
+      flex-shrink: 0;
+    }
+    .ta-select-section h3 {
+      font-size: 13px;
+      color: #ad1457;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .ta-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+
+    .ta-item {
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all .15s;
+    }
+    .ta-item:hover { background: #fce4ec; }
+    .ta-item.active { background: #f8bbd0; border-color: #e91e63; }
+    .ta-item .ta-name { font-weight: 700; color: #880e4f; font-size: 14px; }
+    .ta-item .ta-subject { font-size: 11px; color: #ad1457; margin-top: 2px; }
+
+    .sidebar-content { padding: 8px 12px 12px; overflow-y: auto; flex: 1; }
+    .sidebar-content h3 {
+      font-size: 13px; color: #ad1457; margin-bottom: 6px;
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+
+    .ta-bookings-name { font-size: 13px; color: #c2185b; font-weight: 700; margin-bottom: 8px; }
+
+    .sidebar-slot {
+      padding: 8px 10px; margin-bottom: 6px; border-radius: 8px;
+      font-size: 12px; background: #fce4ec; color: #880e4f;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .sidebar-slot.own { background: #f8bbd0; border-left: 3px solid #e91e63; }
+    .sidebar-slot .ss-info { flex: 1; }
+    .sidebar-slot .ss-name { font-weight: 600; }
+    .sidebar-slot .ss-time { font-size: 11px; color: #ad1457; margin-top: 1px; }
+    .sidebar-slot .cancel-btn {
+      background: none; border: none; color: #e91e63; cursor: pointer;
+      font-size: 14px; font-weight: 700; padding: 0 4px;
+    }
+    .sidebar-slot .cancel-btn:hover { color: #b71c1c; }
+
+    .ta-empty { text-align: center; color: #ccc; font-size: 12px; padding: 16px 0; }
+
+    /* History entries */
+    .history-entry {
+      padding: 8px 10px; margin-bottom: 6px; border-radius: 8px;
+      font-size: 11px; background: #fafafa; border-left: 3px solid #ccc;
+    }
+    .history-entry.created { border-left-color: #4caf50; background: #e8f5e9; }
+    .history-entry.cancelled { border-left-color: #f44336; background: #ffebee; }
+    .history-entry .he-action { font-weight: 700; text-transform: uppercase; font-size: 10px; }
+    .history-entry .he-action.created { color: #2e7d32; }
+    .history-entry .he-action.cancelled { color: #c62828; }
+    .history-entry .he-info { margin-top: 2px; color: #555; }
+
+    /* Admin panel styles */
+    .admin-section { margin-bottom: 16px; }
+    .admin-section h4 {
+      font-size: 12px; color: #c2185b; margin-bottom: 6px;
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+    .admin-row {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px; margin-bottom: 4px; border-radius: 6px;
+      background: #fce4ec; font-size: 12px;
+    }
+    .admin-row select, .admin-row input[type="time"], .admin-row input[type="date"] {
+      padding: 3px 6px; border: 1px solid #f48fb1; border-radius: 4px;
+      font-size: 11px; background: #fff;
+    }
+    .admin-row .remove-btn {
+      background: none; border: none; color: #e91e63; cursor: pointer;
+      font-size: 14px; font-weight: 700; margin-left: auto;
+    }
+    .admin-add-row {
+      display: flex; gap: 6px; align-items: center; margin-top: 6px; flex-wrap: wrap;
+    }
+    .admin-add-row select, .admin-add-row input {
+      padding: 4px 6px; border: 1px solid #f48fb1; border-radius: 4px; font-size: 11px;
+    }
+    .btn-sm {
+      padding: 4px 10px; border: none; border-radius: 6px; cursor: pointer;
+      font-size: 11px; font-weight: 600; transition: opacity .2s;
+    }
+    .btn-sm.primary { background: #e91e63; color: #fff; }
+    .btn-sm.primary:hover { opacity: .85; }
+    .btn-sm.danger { background: #ef5350; color: #fff; }
+    .btn-sm.danger:hover { opacity: .85; }
+
+    .blocked-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 8px; margin-bottom: 4px; border-radius: 6px;
+      background: #fff3e0; font-size: 12px; border-left: 3px solid #ff9800;
+    }
+    .blocked-item .bi-date { font-weight: 700; }
+    .blocked-item .bi-reason { color: #888; font-style: italic; }
+    .blocked-item .remove-btn {
+      background: none; border: none; color: #e91e63; cursor: pointer;
+      font-size: 14px; font-weight: 700; margin-left: auto;
+    }
+
+    /* Notification config */
+    .notif-config .nc-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 8px; font-size: 12px;
+    }
+    .notif-config label { min-width: 120px; font-weight: 600; color: #555; }
+    .notif-config input[type="text"], .notif-config input[type="password"], .notif-config input[type="email"] {
+      flex: 1; padding: 5px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px;
+    }
+    .notif-config input[type="checkbox"] { width: 18px; height: 18px; }
+
+    /* ===== Main content ===== */
+    .main { flex: 1; padding: 24px; overflow-y: auto; }
+
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 20px; flex-wrap: wrap; gap: 10px;
+    }
+    .header h1 { color: #c2185b; font-size: 24px; }
+
+    .view-controls {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .view-toggle {
+      display: flex; border-radius: 8px; overflow: hidden; border: 1px solid #f48fb1;
+    }
+    .view-toggle button {
+      padding: 6px 14px; border: none; background: #fff; color: #c2185b;
+      cursor: pointer; font-size: 12px; font-weight: 600; transition: background .15s;
+    }
+    .view-toggle button.active { background: #e91e63; color: #fff; }
+    .view-toggle button:hover:not(.active) { background: #fce4ec; }
+
+    .week-nav, .month-nav {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .week-nav button, .month-nav button {
+      background: #fff; border: 1px solid #f48fb1; border-radius: 8px;
+      padding: 6px 12px; cursor: pointer; font-size: 14px; color: #c2185b;
+      transition: background .2s;
+    }
+    .week-nav button:hover, .month-nav button:hover { background: #fce4ec; }
+    .week-nav span, .month-nav span {
+      font-weight: 600; color: #880e4f; font-size: 14px;
+    }
+
+    /* ===== Calendar (Week View) ===== */
+    .calendar {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      gap: 8px; margin-bottom: 24px;
+    }
+    .cal-header {
+      text-align: center; font-weight: 700; color: #c2185b;
+      font-size: 13px; padding-bottom: 4px;
+    }
+    .cal-day {
+      background: #fff; border-radius: 10px; padding: 8px;
+      min-height: 130px; box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .cal-day.today { border: 2px solid #e91e63; }
+    .cal-day.blocked { background: #fff3e0; opacity: .7; }
+    .cal-day .day-date {
+      font-size: 12px; font-weight: 700; color: #880e4f;
+      text-align: center; margin-bottom: 6px;
+    }
+    .cal-day .blocked-label {
+      font-size: 10px; color: #ff9800; font-weight: 700;
+      text-align: center; text-transform: uppercase;
+    }
+
+    .cal-slot {
+      padding: 4px 6px; margin-bottom: 4px; border-radius: 6px;
+      font-size: 11px; background: #fce4ec; color: #880e4f;
+      position: relative;
+    }
+    .cal-slot.own { background: #f8bbd0; border-left: 3px solid #e91e63; }
+    .cal-slot .slot-name { font-weight: 600; }
+    .cal-slot .slot-time { font-size: 10px; color: #ad1457; }
+    .cal-slot .cancel-btn {
+      float: right; background: none; border: none; color: #e91e63;
+      cursor: pointer; font-size: 12px; font-weight: 700;
+    }
+    .cal-slot .cancel-btn:hover { color: #b71c1c; }
+    .empty-day { text-align: center; color: #ccc; font-size: 11px; margin-top: 10px; }
+
+    /* ===== Calendar (Month View) ===== */
+    .month-calendar {
+      display: none; margin-bottom: 24px;
+    }
+    .month-calendar.active { display: block; }
+    .calendar.active { display: none; }
+
+    .month-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .month-header-cell {
+      text-align: center; font-weight: 700; color: #c2185b;
+      font-size: 13px; padding: 6px 0;
+    }
+    .month-day {
+      background: #fff; border-radius: 8px; padding: 6px;
+      min-height: 80px; box-shadow: 0 1px 4px rgba(0,0,0,.05);
+      cursor: default;
+    }
+    .month-day.today { border: 2px solid #e91e63; }
+    .month-day.blocked { background: #fff3e0; }
+    .month-day.other-month { opacity: .3; }
+    .month-day .md-date {
+      font-size: 11px; font-weight: 700; color: #880e4f;
+      text-align: center; margin-bottom: 3px;
+    }
+    .month-day .md-dot {
+      display: inline-block; width: 6px; height: 6px;
+      border-radius: 50%; background: #e91e63; margin: 1px;
+    }
+    .month-day .md-count {
+      font-size: 10px; color: #ad1457; text-align: center; margin-top: 2px;
+    }
+    .month-day .blocked-label {
+      font-size: 9px; color: #ff9800; font-weight: 700;
+      text-align: center; text-transform: uppercase;
+    }
+
+    /* ===== Booking form ===== */
+    .form-card {
+      background: #fff; border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.08);
+      padding: 24px; max-width: 520px;
+    }
+    .form-card h3 { color: #c2185b; margin-bottom: 16px; text-align: center; }
+    .fg { margin-bottom: 12px; }
+    .fg label { display: block; font-weight: 600; color: #555; font-size: 13px; margin-bottom: 4px; }
+    .fg input, .fg select {
+      width: 100%; padding: 9px 12px; border: 1px solid #ddd;
+      border-radius: 8px; font-size: 14px; transition: border-color .3s;
+    }
+    .fg input:focus, .fg select:focus {
+      outline: none; border-color: #ec407a;
+      box-shadow: 0 0 0 3px rgba(236,64,122,.12);
+    }
+    .form-row { display: flex; gap: 10px; }
+    .form-row .fg { flex: 1; }
+    button[type="submit"] {
+      width: 100%; padding: 11px;
+      background: linear-gradient(135deg, #ec407a, #c2185b);
+      color: #fff; border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: opacity .3s; margin-top: 4px;
+    }
+    button[type="submit"]:hover { opacity: .9; }
+
+    #message {
+      margin-top: 12px; padding: 10px; border-radius: 8px;
+      font-size: 13px; text-align: center; display: none;
+    }
+    #message.success { display: block; background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+    #message.error { display: block; background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+
+    /* Admin panel in main area */
+    .admin-panel-main {
+      display: none; background: #fff; border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.08); padding: 24px;
+      max-width: 700px; margin-bottom: 24px;
+    }
+    .admin-panel-main.active { display: block; }
+    .admin-panel-main h3 { color: #c2185b; margin-bottom: 16px; }
+    .admin-tab-bar {
+      display: flex; gap: 2px; margin-bottom: 16px;
+      border-bottom: 2px solid #fce4ec;
+    }
+    .admin-tab-bar button {
+      padding: 8px 16px; border: none; background: #fce4ec;
+      color: #c2185b; border-radius: 8px 8px 0 0;
+      cursor: pointer; font-size: 13px; font-weight: 600;
+      transition: background .15s;
+    }
+    .admin-tab-bar button.active { background: #e91e63; color: #fff; }
+    .admin-tab-bar button:hover:not(.active) { background: #f8bbd0; }
+
+    .admin-tab-content { display: none; }
+    .admin-tab-content.active { display: block; }
+
+    .history-table {
+      width: 100%; border-collapse: collapse; font-size: 12px;
+    }
+    .history-table th {
+      text-align: left; padding: 8px; background: #fce4ec;
+      color: #c2185b; font-size: 11px; text-transform: uppercase;
+      position: sticky; top: 0;
+    }
+    .history-table td {
+      padding: 6px 8px; border-bottom: 1px solid #f5f5f5;
+    }
+    .history-table tr:hover td { background: #fafafa; }
+    .history-table .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 10px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+    }
+    .history-table .badge.created { background: #e8f5e9; color: #2e7d32; }
+    .history-table .badge.cancelled { background: #ffebee; color: #c62828; }
+    .history-scroll { max-height: 400px; overflow-y: auto; }
+
+    #adminPwMessage.success { display:block !important; background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; }
+    #adminPwMessage.error { display:block !important; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; }
+
+    @media (max-width: 900px) {
+      .app { flex-direction: column; }
+      .sidebar { width: 100%; max-height: 300px; }
+      .calendar { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <h2><span>📋</span> QueueLess</h2>
+
+      <!-- Sidebar navigation tabs -->
+      <div class="sidebar-nav">
+        <button class="active" data-view="bookings">📅 Bookings</button>
+        <button data-view="history">📜 History</button>
+        <button data-view="admin">⚙️ Admin</button>
+      </div>
+
+      <!-- BOOKINGS view -->
+      <div id="sidebarBookings">
+        <div class="ta-select-section">
+          <h3>Choose TA</h3>
+          <ul class="ta-list" id="taList"></ul>
+        </div>
+        <div class="sidebar-content">
+          <h3>Bookings</h3>
+          <div class="ta-bookings-name" id="taBookingsName"></div>
+          <div id="taBookingsList"></div>
+        </div>
+      </div>
+
+      <!-- HISTORY view -->
+      <div id="sidebarHistory" style="display:none;">
+        <div class="sidebar-content">
+          <h3>Recent Activity</h3>
+          <div id="historyList"></div>
+        </div>
+      </div>
+
+      <!-- ADMIN view -->
+      <div id="sidebarAdmin" style="display:none;">
+        <!-- Admin login section -->
+        <div id="adminLoginSection">
+          <div style="padding:12px 12px 8px;border-bottom:2px solid #fce4ec;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <h3 style="font-size:13px;color:#ad1457;text-transform:uppercase;letter-spacing:.5px;margin:0;">🔒 Admin Login</h3>
+              <span id="adminUserBadge" style="font-size:11px;color:#e91e63;font-weight:700;display:none;"></span>
+            </div>
+            <form id="adminLoginForm">
+              <div class="fg" style="margin-bottom:8px;">
+                <input type="text" id="adminLoginUser" placeholder="Username" required style="width:100%;padding:7px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px;" />
+              </div>
+              <div class="fg" style="margin-bottom:8px;">
+                <input type="password" id="adminLoginPass" placeholder="Password" required style="width:100%;padding:7px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px;" />
+              </div>
+              <button type="submit" class="btn-sm primary" style="width:100%;">Login</button>
+              <div id="adminLoginError" style="color:#c62828;font-size:11px;margin-top:6px;text-align:center;min-height:16px;"></div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Admin content (hidden until logged in) -->
+        <div id="adminContentWrapper" style="display:none;">
+          <div class="ta-select-section">
+            <h3>Manage TA</h3>
+            <ul class="ta-list" id="taListAdmin"></ul>
+          </div>
+          <div class="sidebar-content" id="adminPanel">
+            <p class="ta-empty">Select a TA to manage</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main area -->
+    <div class="main">
+      <div class="header">
+        <h1 id="taTitle">Select a TA</h1>
+        <div class="view-controls">
+          <div class="view-toggle">
+            <button class="active" id="viewWeek">Week</button>
+            <button id="viewMonth">Month</button>
+          </div>
+          <div class="week-nav" id="weekNav">
+            <button id="prevWeek">◀</button>
+            <span id="weekLabel"></span>
+            <button id="nextWeek">▶</button>
+          </div>
+          <div class="month-nav" id="monthNav" style="display:none;">
+            <button id="prevMonth">◀</button>
+            <span id="monthLabel"></span>
+            <button id="nextMonth">▶</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Week Calendar -->
+      <div class="calendar" id="calendar"></div>
+
+      <!-- Month Calendar -->
+      <div class="month-calendar" id="monthCalendar"></div>
+
+      <!-- Admin Panel (main area) -->
+      <div class="admin-panel-main" id="adminPanelMain">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <h3 style="margin:0;">⚙️ Admin Panel</h3>
+          <button class="btn-sm danger" id="adminLogoutBtn">Logout</button>
+        </div>
+        <div class="admin-tab-bar">
+          <button class="active" data-tab="hours">Available Hours</button>
+          <button data-tab="blocked">Blocked Dates</button>
+          <button data-tab="notifications">Notifications</button>
+          <button data-tab="security">Security</button>
+        </div>
+
+        <!-- Hours tab -->
+        <div class="admin-tab-content active" id="tabHours">
+          <p style="font-size:13px;color:#666;margin-bottom:12px;">
+            Define available hours per day of week. Bookings outside these hours will be rejected.
+          </p>
+          <div id="adminHoursList"></div>
+          <div class="admin-add-row">
+            <select id="adminHourDay">
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+              <option value="0">Sunday</option>
+            </select>
+            <input type="time" id="adminHourStart" value="09:00" />
+            <span>to</span>
+            <input type="time" id="adminHourEnd" value="17:00" />
+            <button class="btn-sm primary" id="addAdminHour">+ Add</button>
+          </div>
+        </div>
+
+        <!-- Blocked dates tab -->
+        <div class="admin-tab-content" id="tabBlocked">
+          <p style="font-size:13px;color:#666;margin-bottom:12px;">
+            Block specific dates (holidays, days off). No bookings can be made on blocked dates.
+          </p>
+          <div id="adminBlockedList"></div>
+          <div class="admin-add-row">
+            <input type="date" id="adminBlockDate" />
+            <input type="text" id="adminBlockReason" placeholder="Reason (optional)" style="flex:1;" />
+            <button class="btn-sm primary" id="addBlocked">+ Block</button>
+          </div>
+        </div>
+
+        <!-- Notifications tab -->
+        <div class="admin-tab-content" id="tabNotifications">
+          <p style="font-size:13px;color:#666;margin-bottom:12px;">
+            Configure email and Telegram notifications for booking confirmations and cancellations.
+          </p>
+          <div class="notif-config" id="notifConfig">
+            <div class="nc-row">
+              <label><input type="checkbox" id="ncEmailEnabled" /> Enable Email</label>
+            </div>
+            <div class="nc-row">
+              <label>From (Gmail):</label>
+              <input type="email" id="ncEmailFrom" placeholder="you@gmail.com" />
+            </div>
+            <div class="nc-row">
+              <label>App Password:</label>
+              <input type="password" id="ncEmailPassword" placeholder="Gmail app password" />
+            </div>
+            <div class="nc-row">
+              <label>Send To:</label>
+              <input type="email" id="ncEmailTo" placeholder="recipient@example.com" />
+            </div>
+            <hr style="margin:12px 0;border:none;border-top:1px solid #eee;" />
+            <div class="nc-row">
+              <label><input type="checkbox" id="ncTelegramEnabled" /> Enable Telegram</label>
+            </div>
+            <div class="nc-row">
+              <label>Bot Token:</label>
+              <input type="text" id="ncTelegramToken" placeholder="123456:ABC-DEF..." />
+            </div>
+            <div class="nc-row">
+              <label>Chat ID:</label>
+              <input type="text" id="ncTelegramChatId" placeholder="-1001234567890" />
+            </div>
+            <div class="nc-row" style="margin-top:12px;">
+              <button class="btn-sm primary" id="saveNotifConfig">Save Notification Settings</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Security tab -->
+        <div class="admin-tab-content" id="tabSecurity">
+          <p style="font-size:13px;color:#666;margin-bottom:12px;">
+            Change the admin password. Default credentials: username <strong>admin</strong>, password <strong>admin123</strong>.
+          </p>
+          <div style="max-width:360px;">
+            <div class="fg">
+              <label for="adminCurrentPw">Current Password</label>
+              <input type="password" id="adminCurrentPw" placeholder="Enter current password" />
+            </div>
+            <div class="fg">
+              <label for="adminNewPw">New Password</label>
+              <input type="password" id="adminNewPw" placeholder="Enter new password" />
+            </div>
+            <div class="fg">
+              <label for="adminConfirmPw">Confirm New Password</label>
+              <input type="password" id="adminConfirmPw" placeholder="Confirm new password" />
+            </div>
+            <button class="btn-sm primary" id="adminChangePwBtn" style="margin-top:4px;">Change Password</button>
+            <div id="adminPwMessage" style="margin-top:8px;font-size:12px;padding:8px;border-radius:8px;display:none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Booking form -->
+      <div class="form-card" id="bookingFormCard">
+        <h3>📝 Book a Slot</h3>
+        <form id="bookingForm">
+          <div class="fg">
+            <label for="name">Name Surname</label>
+            <input type="text" id="name" placeholder="John Doe" required />
+          </div>
+          <div class="fg">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="user@innopolis.university" required />
+          </div>
+          <div class="fg">
+            <label for="telegram">Telegram</label>
+            <input type="text" id="telegram" placeholder="@username" required />
+          </div>
+          <div class="form-row">
+            <div class="fg">
+              <label for="date">Date</label>
+              <input type="date" id="date" required />
+            </div>
+            <div class="fg">
+              <label for="time">Time</label>
+              <input type="time" id="time" required />
+            </div>
+          </div>
+          <div class="fg">
+            <label for="duration">Duration</label>
+            <select id="duration" required>
+              <option value="30">30 minutes</option>
+              <option value="60" selected>60 minutes</option>
+              <option value="90">90 minutes</option>
+            </select>
+          </div>
+          <button type="submit">Book Now</button>
+        </form>
+        <div id="message"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
