@@ -314,10 +314,12 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## Presentation
 
-A 5-slide HTML presentation is included at [`presentation.html`](presentation.html). Open it in a browser and use ← → arrow keys to navigate. Slides cover:
+A 5-slide PDF presentation is included at [`presentation.pdf`](presentation.pdf). Open it with any PDF viewer. Slides cover:
 
-1. **Title** — Product name, author, email, group
+1. **Title** — Product name, author (Kamilla Iarullina), email, group (DSAI-03)
 2. **Context** — End users, problem, solution
 3. **Implementation** — Tech stack, V1→V2, TA feedback addressed
-4. **Demo** — Feature walkthrough with live product link
+4. **Demo** — Feature walkthrough description
 5. **Links** — GitHub repo and deployed product with QR codes
+
+To regenerate from source: `python3 gen_pdf.py`
