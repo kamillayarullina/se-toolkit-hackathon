@@ -2,7 +2,7 @@
 
 > **A modern TA office-hour booking system** with calendar views, admin controls, notifications, and full audit logging — built with Node.js, Express, and SQLite.
 
-**🌐 Live Demo:** [http://188.130.155.158:8000](http://188.130.155.158:8000)
+**🌐 Live Demo:** [http://10.93.25.100:8000](http://10.93.25.100:8000) *(also accessible at `http://localhost:8000` when running locally)*
 
 ---
 
