@@ -2,6 +2,8 @@
 
 > **A modern TA office-hour booking system** with calendar views, admin controls, notifications, and full audit logging — built with Node.js, Express, and SQLite.
 
+**🌐 Live Demo:** [http://188.130.155.158:8000](http://188.130.155.158:8000)
+
 ---
 
 ## Demo
@@ -307,3 +309,15 @@ QueueLess/
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+---
+
+## Presentation
+
+A 5-slide HTML presentation is included at [`presentation.html`](presentation.html). Open it in a browser and use ← → arrow keys to navigate. Slides cover:
+
+1. **Title** — Product name, author, email, group
+2. **Context** — End users, problem, solution
+3. **Implementation** — Tech stack, V1→V2, TA feedback addressed
+4. **Demo** — Feature walkthrough with live product link
+5. **Links** — GitHub repo and deployed product with QR codes
