@@ -388,7 +388,7 @@ def build_presentation():
     output_path = "/root/QueueLess/presentation.pdf"
     
     # URLs for QR codes (update these as needed)
-    GITHUB_URL = "https://github.com/yourusername/QueueLess"
+    GITHUB_URL = "https://github.com/kamillayarullina/se-toolkit-hackathon"
     DEPLOYED_URL = "http://10.93.25.100:8000"
     
     doc = BaseDocTemplate(
