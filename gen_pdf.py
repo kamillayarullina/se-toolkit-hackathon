@@ -1,500 +1,436 @@
-#!/usr/bin/env python3
-"""Generate QueueLess 5-slide presentation PDF with elegant light-pink design."""
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.lib.colors import HexColor
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+    PageBreak, Frame, PageTemplate, BaseDocTemplate
+)
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.platypus.flowables import Flowable
+from reportlab.graphics.shapes import Drawing, Rect, String
+from reportlab.graphics import renderPDF
+import qrcode
+import io
+import os
 
-from fpdf import FPDF
-import os, math, urllib.request, ssl
+# Colors
+BG_PINK = HexColor("#FFF0F5")        # Lavender Blush
+PINK_ACCENT = HexColor("#FFB6C1")    # Light Pink
+PINK_DARK = HexColor("#DB7093")      # Pale Violet Red
+PINK_MEDIUM = HexColor("#FF69B4")    # Hot Pink
+TEXT_DARK = HexColor("#4A4A4A")
+TEXT_LIGHT = HexColor("#FFFFFF")
+WHITE = HexColor("#FFFFFF")
+LIGHT_PINK_BG = HexColor("#FFE4E1")  # Misty Rose
 
-# ── colour palette ──────────────────────────────────────────────
-BG       = (255, 245, 247)
-PINK1    = (252, 228, 236)
-PINK2    = (248, 187, 208)
-PINK3    = (244, 143, 177)
-PINK4    = (233, 30, 99)
-ROSE     = (194, 24, 91)
-WHITE    = (255, 255, 255)
-CARD     = (255, 255, 255)
-GRAY     = (120, 120, 130)
-DIM      = (170, 170, 180)
+class PageBackground(Flowable):
+    """Draw pink background on each page"""
+    def __init__(self, width, height):
+        Flowable.__init__(self)
+        self.width = 0
+        self.height = 0
+        self.page_width = width
+        self.page_height = height
+    
+    def draw(self):
+        self.canv.setFillColor(BG_PINK)
+        self.canv.rect(0, 0, self.page_width, self.page_height, fill=1, stroke=0)
+        # Decorative top border
+        self.canv.setFillColor(PINK_ACCENT)
+        self.canv.rect(0, self.page_height - 8*mm, self.page_width, 8*mm, fill=1, stroke=0)
+        # Decorative bottom border  
+        self.canv.rect(0, 0, self.page_width, 8*mm, fill=1, stroke=0)
 
-URL_GH   = "https://github.com/kamillayarullina/se-toolkit-hackathon"
-URL_LIVE = "http://10.93.25.100:8000"
+def generate_qr_code(data, size=80):
+    """Generate QR code and return as Drawing"""
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="#4A4A4A", back_color="#FFFFFF")
+    img_buffer = io.BytesIO()
+    img.save(img_buffer, format='PNG')
+    img_buffer.seek(0)
+    
+    from reportlab.platypus import Image
+    qr_img = Image(img_buffer, width=size, height=size)
+    return qr_img
 
-FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-FONTB = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+def create_slide_0(width, height, styles):
+    """Title Slide"""
+    elements = []
+    elements.append(PageBackground(width, height))
+    elements.append(Spacer(1, 60*mm))
+    
+    # Title
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Title'],
+        fontSize=36,
+        textColor=PINK_DARK,
+        alignment=TA_CENTER,
+        spaceAfter=10*mm,
+        fontName='Helvetica-Bold'
+    )
+    elements.append(Paragraph("QueueLess", title_style))
+    
+    # Subtitle
+    subtitle_style = ParagraphStyle(
+        'Subtitle',
+        parent=styles['Normal'],
+        fontSize=18,
+        textColor=TEXT_DARK,
+        alignment=TA_CENTER,
+        spaceAfter=20*mm,
+        fontName='Helvetica-Oblique'
+    )
+    elements.append(Paragraph("Smart Online Queue Management", subtitle_style))
+    
+    # Info
+    info_style = ParagraphStyle(
+        'Info',
+        parent=styles['Normal'],
+        fontSize=14,
+        textColor=TEXT_DARK,
+        alignment=TA_CENTER,
+        spaceAfter=5*mm,
+        fontName='Helvetica'
+    )
+    elements.append(Paragraph("<b>Kamilla Iarullina</b>", info_style))
+    elements.append(Paragraph("k.iarullina@innopolis.university", info_style))
+    elements.append(Paragraph("Group: DSAI-03", info_style))
+    
+    return elements
 
-W, H = 297, 210
+def create_slide_1(width, height, styles):
+    """Context Slide"""
+    elements = []
+    elements.append(PageBackground(width, height))
+    elements.append(Spacer(1, 25*mm))
+    
+    # Section title
+    section_style = ParagraphStyle(
+        'SectionTitle',
+        parent=styles['Title'],
+        fontSize=28,
+        textColor=PINK_DARK,
+        alignment=TA_CENTER,
+        spaceAfter=15*mm,
+        fontName='Helvetica-Bold'
+    )
+    elements.append(Paragraph("Context", section_style))
+    
+    # Content box
+    content_style = ParagraphStyle(
+        'Content',
+        parent=styles['Normal'],
+        fontSize=13,
+        textColor=TEXT_DARK,
+        alignment=TA_LEFT,
+        spaceAfter=8*mm,
+        fontName='Helvetica',
+        leading=16
+    )
+    
+    # End User
+    user_label = ParagraphStyle(
+        'Label',
+        parent=styles['Normal'],
+        fontSize=15,
+        textColor=PINK_MEDIUM,
+        alignment=TA_LEFT,
+        spaceAfter=4*mm,
+        spaceBefore=5*mm,
+        fontName='Helvetica-Bold'
+    )
+    
+    elements.append(Paragraph("👤 End-User", user_label))
+    elements.append(Paragraph(
+        "Customers of small businesses with queues<br/>"
+        "(e.g., barbershops, clinics, cafes)",
+        content_style
+    ))
+    
+    elements.append(Paragraph("❓ Problem We Solve", user_label))
+    elements.append(Paragraph(
+        "It reduces time wasted in physical queues by letting users<br/>"
+        "join remotely and see real-time queue status with<br/>"
+        "estimated waiting time.",
+        content_style
+    ))
+    
+    elements.append(Paragraph("💡 Product Idea", user_label))
+    elements.append(Paragraph(
+        "A website that lets users join a queue online<br/>"
+        "and come at the right time.",
+        content_style
+    ))
+    
+    return elements
 
+def create_slide_2(width, height, styles):
+    """Stakeholders Slide"""
+    elements = []
+    elements.append(PageBackground(width, height))
+    elements.append(Spacer(1, 25*mm))
+    
+    section_style = ParagraphStyle(
+        'SectionTitle',
+        parent=styles['Title'],
+        fontSize=28,
+        textColor=PINK_DARK,
+        alignment=TA_CENTER,
+        spaceAfter=20*mm,
+        fontName='Helvetica-Bold'
+    )
+    elements.append(Paragraph("Stakeholders", section_style))
+    
+    content_style = ParagraphStyle(
+        'Content',
+        parent=styles['Normal'],
+        fontSize=14,
+        textColor=TEXT_DARK,
+        alignment=TA_CENTER,
+        spaceAfter=10*mm,
+        fontName='Helvetica',
+        leading=18
+    )
+    
+    elements.append(Paragraph(
+        "🎓 Students and staff at Innopolis University<br/>"
+        "who need to book time slots<br/>"
+        "for example for consultations",
+        content_style
+    ))
+    
+    elements.append(Spacer(1, 15*mm))
+    
+    # Highlight box
+    highlight_style = ParagraphStyle(
+        'Highlight',
+        parent=styles['Normal'],
+        fontSize=13,
+        textColor=TEXT_DARK,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Oblique',
+        leading=16
+    )
+    elements.append(Paragraph(
+        '"No more waiting in line —<br/>book your spot and arrive just in time!"',
+        highlight_style
+    ))
+    
+    return elements
 
-class PDF(FPDF):
-    def __init__(self):
-        super().__init__("L", "mm", "A4")
-        self.set_auto_page_break(False)
-        self.add_font("D", "", FONT)
-        self.add_font("D", "B", FONTB)
+def create_slide_3(width, height, styles):
+    """Implementation Slide"""
+    elements = []
+    elements.append(PageBackground(width, height))
+    elements.append(Spacer(1, 20*mm))
+    
+    section_style = ParagraphStyle(
+        'SectionTitle',
+        parent=styles['Title'],
+        fontSize=26,
+        textColor=PINK_DARK,
+        alignment=TA_CENTER,
+        spaceAfter=10*mm,
+        fontName='Helvetica-Bold'
+    )
+    elements.append(Paragraph("Implementation", section_style))
+    
+    # How we built it
+    label_style = ParagraphStyle(
+        'Label',
+        parent=styles['Normal'],
+        fontSize=14,
+        textColor=PINK_MEDIUM,
+        alignment=TA_LEFT,
+        spaceAfter=3*mm,
+        spaceBefore=5*mm,
+        fontName='Helvetica-Bold'
+    )
+    
+    content_style = ParagraphStyle(
+        'Content',
+        parent=styles['Normal'],
+        fontSize=11,
+        textColor=TEXT_DARK,
+        alignment=TA_LEFT,
+        spaceAfter=4*mm,
+        fontName='Helvetica',
+        leading=14
+    )
+    
+    elements.append(Paragraph("🛠️ How We Built It", label_style))
+    elements.append(Paragraph(
+        "Node.js backend with Express • SQLite database<br/>"
+        "Real-time updates with JavaScript frontend",
+        content_style
+    ))
+    
+    elements.append(Paragraph("📦 Version 1", label_style))
+    elements.append(Paragraph(
+        "• Booking with overlap prevention<br/>"
+        "• User fills form (name, email, date, time, duration)<br/>"
+        "• Server validates email, checks slot availability<br/>"
+        "• Sidebar shows all current bookings<br/>"
+        "• Users can cancel only their own booking",
+        content_style
+    ))
+    
+    elements.append(Paragraph("🚀 Version 2", label_style))
+    elements.append(Paragraph(
+        "• View bookings by week/month calendar<br/>"
+        "• Admin view: define available hours & block dates<br/>"
+        "• Booking history log (who booked/cancelled, when)",
+        content_style
+    ))
+    
+    elements.append(Paragraph("💬 TA Feedback Addressed", label_style))
+    elements.append(Paragraph(
+        "• Added support for multiple queues",
+        content_style
+    ))
+    
+    return elements
 
-    # ── background helpers ──────────────────────────────────────
-    def _bg(self):
-        self.set_fill_color(*BG)
-        self.rect(0, 0, W, H, "F")
+def create_slide_4(width, height, styles, github_url, deployed_url):
+    """Demo & Links Slide"""
+    elements = []
+    elements.append(PageBackground(width, height))
+    elements.append(Spacer(1, 18*mm))
+    
+    section_style = ParagraphStyle(
+        'SectionTitle',
+        parent=styles['Title'],
+        fontSize=26,
+        textColor=PINK_DARK,
+        alignment=TA_CENTER,
+        spaceAfter=8*mm,
+        fontName='Helvetica-Bold'
+    )
+    elements.append(Paragraph("Demo & Links", section_style))
+    
+    demo_style = ParagraphStyle(
+        'Demo',
+        parent=styles['Normal'],
+        fontSize=12,
+        textColor=TEXT_DARK,
+        alignment=TA_CENTER,
+        spaceAfter=10*mm,
+        fontName='Helvetica-Oblique'
+    )
+    elements.append(Paragraph(
+        "Pre-recorded video demonstration of Version 2<br/>"
+        "with voice-over (≤ 2 minutes)",
+        demo_style
+    ))
+    
+    # Generate QR codes
+    qr_github = generate_qr_code(github_url, 70)
+    qr_deployed = generate_qr_code(deployed_url, 70)
+    
+    # Links table
+    link_style = ParagraphStyle(
+        'Link',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=HexColor("#0066CC"),
+        alignment=TA_CENTER,
+        fontName='Helvetica'
+    )
+    
+    # Create QR codes as images
+    qr1_path = "/tmp/qr_github.png"
+    qr2_path = "/tmp/qr_deployed.png"
+    
+    qr1 = qrcode.make(github_url)
+    qr1.save(qr1_path)
+    
+    qr2 = qrcode.make(deployed_url)
+    qr2.save(qr2_path)
+    
+    from reportlab.platypus import Image
+    
+    # Table with QR codes and links
+    qr_img1 = Image(qr1_path, width=65, height=65)
+    qr_img2 = Image(qr2_path, width=65, height=65)
+    
+    data = [
+        [qr_img1, qr_img2],
+        [Paragraph("GitHub Repository", link_style), 
+         Paragraph("Deployed Product", link_style)],
+        [Paragraph(github_url, ParagraphStyle('small', fontSize=8, textColor=TEXT_DARK, alignment=TA_CENTER)),
+         Paragraph(deployed_url, ParagraphStyle('small2', fontSize=8, textColor=TEXT_DARK, alignment=TA_CENTER))]
+    ]
+    
+    table = Table(data, colWidths=[width/2, width/2])
+    table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    
+    elements.append(Spacer(1, 10*mm))
+    elements.append(table)
+    
+    return elements
 
-    def _deco_circle(self, x, y, r, c):
-        steps = 48
-        pts = [(x + r * math.cos(a), y + r * math.sin(a))
-               for a in [2 * math.pi * i / steps for i in range(steps + 1)]]
-        self.set_fill_color(*c)
-        self.polygon(pts, style="F")
+def build_presentation():
+    """Build the complete presentation"""
+    output_path = "/root/QueueLess/presentation.pdf"
+    
+    # URLs for QR codes (update these as needed)
+    GITHUB_URL = "https://github.com/yourusername/QueueLess"
+    DEPLOYED_URL = "https://queueless.yourdomain.com"
+    
+    doc = BaseDocTemplate(
+        output_path,
+        pagesize=A4,
+        title="QueueLess Presentation",
+        author="Kamilla Iarullina",
+        showBoundary=0
+    )
+    
+    # Page dimensions
+    width, height = A4
+    
+    # Create frame for content
+    frame = Frame(
+        15*mm, 15*mm,  # x, y
+        width - 30*mm, height - 30*mm,  # width, height
+        id='normal'
+    )
+    
+    # Add page template
+    doc.addPageTemplates([
+        PageTemplate(id='all', frames=frame),
+    ])
+    
+    # Styles
+    styles = getSampleStyleSheet()
+    
+    # Build all slides
+    story = []
+    story.extend(create_slide_0(width, height, styles))
+    story.append(PageBreak())
+    story.extend(create_slide_1(width, height, styles))
+    story.append(PageBreak())
+    story.extend(create_slide_2(width, height, styles))
+    story.append(PageBreak())
+    story.extend(create_slide_3(width, height, styles))
+    story.append(PageBreak())
+    story.extend(create_slide_4(width, height, styles, GITHUB_URL, DEPLOYED_URL))
+    
+    doc.build(story)
+    print(f"Presentation saved to {output_path}")
 
-    def _top_bar(self):
-        self.set_fill_color(*PINK3)
-        self.rect(0, 0, W, 3.5, "F")
-
-    def _slide_num(self, n):
-        self.set_font("D", "B", 9)
-        self.set_text_color(*DIM)
-        self.text(W - 18, H - 6, f"{n} / 5")
-
-    def _title_bar(self, text):
-        self.set_font("D", "B", 22)
-        self.set_text_color(*ROSE)
-        self.text(30, 38, text)
-        tw = self.get_string_width(text)
-        self.set_fill_color(*PINK3)
-        self.rect(30, 42, tw, 1.5, "F")
-
-    # ── content helpers ─────────────────────────────────────────
-    def _card(self, x, y, w, h):
-        self.set_fill_color(*CARD)
-        self.set_draw_color(*PINK2)
-        self.set_line_width(0.4)
-        self.rect(x, y, w, h, "DF")
-        self.set_line_width(0.2)
-
-    def _bullet(self, x, y, text, size=10):
-        self.set_font("D", "B", size)
-        self.set_text_color(*PINK4)
-        self.text(x, y, "\u2022")
-        self.set_font("D", "", size)
-        self.set_text_color(*GRAY)
-        self.text(x + 6, y, text)
-        return y + 7
-
-    def _qr(self, url, x, y, sz=32):
-        qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size={sz*3}x{sz*3}&data={url}"
-        p = f"/tmp/qr_{hash(url) & 0xFFFFFF:06x}.png"
-        try:
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-            urllib.request.urlretrieve(qr_url, p, context=ctx)
-            self.image(p, x, y, sz, sz)
-        except Exception:
-            self.set_draw_color(*DIM)
-            self.rect(x, y, sz, sz)
-
-    # ── text-in-card helper ─────────────────────────────────────
-    def _text_in_card(self, x, y, w, lines, line_height=6, start_y_offset=14, font_size=9):
-        """Write multiple lines of text inside a card, properly positioned."""
-        cy = y + start_y_offset
-        for line in lines:
-            self.set_font("D", "", font_size)
-            self.set_text_color(*GRAY)
-            self.text(x + 10, cy, line)
-            cy += line_height
-
-    # ===================================================================
-    # SLIDES
-    # ===================================================================
-    def slide_1(self):
-        self.add_page()
-        self._bg()
-        self._top_bar()
-        self._slide_num(1)
-
-        # decorative circles
-        self._deco_circle(260, 175, 95, PINK1)
-        self._deco_circle(275, 195, 60, PINK2)
-        self._deco_circle(45, 190, 75, PINK1)
-
-        # title
-        self.set_font("D", "B", 48)
-        self.set_text_color(*ROSE)
-        t = "QueueLess"
-        self.text(W / 2 - self.get_string_width(t) / 2, 80, t)
-
-        # underline
-        self.set_fill_color(*PINK3)
-        tw = self.get_string_width(t)
-        self.rect(W / 2 - tw / 2, 85, tw, 1.5, "F")
-
-        # subtitle
-        self.set_font("D", "", 14)
-        self.set_text_color(*GRAY)
-        sub1 = "A modern TA office-hour booking system"
-        sub2 = "with admin controls, notifications & full audit logging"
-        self.text(W / 2 - self.get_string_width(sub1) / 2, 98, sub1)
-        self.text(W / 2 - self.get_string_width(sub2) / 2, 108, sub2)
-
-        # author card
-        cx, cy, cw, ch = W / 2 - 80, 125, 160, 50
-        self._card(cx, cy, cw, ch)
-        # pink left stripe
-        self.set_fill_color(*PINK4)
-        self.rect(cx, cy, 4, ch, "F")
-
-        self.set_font("D", "B", 18)
-        self.set_text_color(*ROSE)
-        self.text(cx + 18, cy + 17, "Kamilla Iarullina")
-
-        self.set_font("D", "", 12)
-        self.set_text_color(*GRAY)
-        self.text(cx + 18, cy + 30, "k.iarullia@innopolis.university")
-        self.text(cx + 18, cy + 41, "Group DSAI-03")
-
-    def slide_2(self):
-        self.add_page()
-        self._bg()
-        self._top_bar()
-        self._slide_num(2)
-        self._deco_circle(265, 185, 80, PINK1)
-        self._title_bar("Context")
-
-        lx, rx = 30, W / 2 + 5
-        y = 58
-        card_h = 72
-
-        # --- Left card: End Users ---
-        self._card(lx, y, W / 2 - 40, card_h)
-        self.set_font("D", "B", 14)
-        self.set_text_color(*ROSE)
-        self.text(lx + 12, y + 14, "End Users")
-        self.set_fill_color(*PINK1)
-        self.rect(lx + 12, y + 17, 55, 0.8, "F")
-
-        user_lines = [
-            "\u2022  Students who need to book TA consultations",
-            "   for course help and office hours",
-            "",
-            "\u2022  Teaching Assistants managing their",
-            "   availability and schedules",
-            "",
-            "\u2022  Administrators configuring TA schedules,",
-            "   blocking holidays & monitoring activity",
-        ]
-        uy = y + 24
-        for line in user_lines:
-            if line.startswith("\u2022"):
-                self.set_font("D", "", 9)
-                self.set_text_color(*PINK4)
-                self.text(lx + 14, uy, "\u2022")
-                self.set_text_color(*GRAY)
-                self.text(lx + 21, uy, line[2:])
-                uy += 7
-            elif line.strip():
-                self.set_font("D", "", 9)
-                self.set_text_color(*GRAY)
-                self.text(lx + 21, uy, line.strip())
-                uy += 7
-            else:
-                uy += 2
-
-        # --- Right card: The Problem ---
-        self._card(rx, y, W / 2 - 40, card_h)
-        self.set_font("D", "B", 14)
-        self.set_text_color(*ROSE)
-        self.text(rx + 12, y + 14, "The Problem")
-        self.set_fill_color(*PINK1)
-        self.rect(rx + 12, y + 17, 55, 0.8, "F")
-
-        prob_lines = [
-            "\u2022  No centralized system to find and book",
-            "   TA office hours efficiently",
-            "",
-            "\u2022  TAs cannot define available hours or block",
-            "   dates for holidays and days off",
-            "",
-            "\u2022  No notifications or audit trail for who",
-            "   booked and cancelled time slots",
-        ]
-        py = y + 24
-        for line in prob_lines:
-            if line.startswith("\u2022"):
-                self.set_font("D", "", 9)
-                self.set_text_color(*PINK4)
-                self.text(rx + 14, py, "\u2022")
-                self.set_text_color(*GRAY)
-                self.text(rx + 21, py, line[2:])
-                py += 7
-            elif line.strip():
-                self.set_font("D", "", 9)
-                self.set_text_color(*GRAY)
-                self.text(rx + 21, py, line.strip())
-                py += 7
-            else:
-                py += 2
-
-        # --- Solution banner ---
-        bx, by, bw, bh = 55, 144, W - 110, 38
-        self._card(bx, by, bw, bh)
-        self.set_fill_color(*PINK4)
-        self.rect(bx, by, 4, bh, "F")
-        self.set_font("D", "B", 14)
-        self.set_text_color(*ROSE)
-        self.text(bx + 16, by + 16, "Our Solution")
-        self.set_fill_color(*PINK1)
-        self.rect(bx + 16, by + 19, 60, 0.8, "F")
-        self.set_font("D", "", 12)
-        self.set_text_color(*GRAY)
-        sol = "QueueLess is a self-hosted web app  \u2014  browse, book, and manage TA slots in one place."
-        self.text(bx + 16, by + 30, sol)
-
-    def slide_3(self):
-        self.add_page()
-        self._bg()
-        self._top_bar()
-        self._slide_num(3)
-        self._deco_circle(260, 180, 85, PINK1)
-        self._title_bar("Implementation")
-
-        lx, rx = 30, W / 2 + 5
-        y = 58
-        card_h = 62
-
-        # --- Tech Stack card ---
-        self._card(lx, y, W / 2 - 40, card_h)
-        self.set_font("D", "B", 14)
-        self.set_text_color(*ROSE)
-        self.text(lx + 12, y + 14, "Tech Stack")
-        self.set_fill_color(*PINK1)
-        self.rect(lx + 12, y + 17, 55, 0.8, "F")
-
-        stack = [
-            "\u2022  Backend: Node.js + Express.js 4",
-            "\u2022  Database: SQLite3 (zero-config, file-based)",
-            "\u2022  Frontend: Vanilla HTML / CSS / JavaScript",
-            "\u2022  Email: Nodemailer (Gmail SMTP)",
-            "\u2022  Messaging: Telegram Bot API",
-            "\u2022  Deployment: Docker + Docker Compose",
-        ]
-        sy = y + 24
-        for item in stack:
-            self.set_font("D", "", 9)
-            self.set_text_color(*PINK4)
-            self.text(lx + 14, sy, "\u2022")
-            self.set_text_color(*GRAY)
-            self.text(lx + 21, sy, item[2:])
-            sy += 7
-
-        # --- V1 -> V2 card ---
-        self._card(rx, y, W / 2 - 40, card_h)
-        self.set_font("D", "B", 14)
-        self.set_text_color(*ROSE)
-        self.text(rx + 12, y + 14, "Version 1  \u2192  Version 2")
-        self.set_fill_color(*PINK1)
-        self.rect(rx + 12, y + 17, 55, 0.8, "F")
-
-        self.set_font("D", "B", 8)
-        self.set_text_color(*DIM)
-        self.text(rx + 14, y + 24, "V1:")
-        self.set_font("D", "", 8)
-        self.set_text_color(*GRAY)
-        v1 = ["Basic booking with overlap detection",
-              "Single-week calendar view",
-              "Email-only ownership for cancellation"]
-        vy = y + 31
-        for item in v1:
-            self.text(rx + 14, vy, item)
-            vy += 6
-
-        self.set_font("D", "B", 8)
-        self.set_text_color(*PINK4)
-        self.text(rx + 14, vy + 1, "V2 added:")
-        vy += 7
-        v2 = ["Week / Month calendar toggle",
-              "Admin authentication (login/logout/sessions)",
-              "Available hours per day + blocked dates",
-              "Email & Telegram notifications",
-              "Full booking history audit log",
-              "Admin password change from UI",
-              "Docker Compose one-command deploy"]
-        for item in v2:
-            self.set_font("D", "", 8)
-            self.set_text_color(*GRAY)
-            self.text(rx + 14, vy, "\u2022  " + item)
-            vy += 6
-
-        # --- TA feedback banner ---
-        bx, by, bw, bh = 40, 135, W - 80, 52
-        self._card(bx, by, bw, bh)
-        self.set_fill_color(*PINK4)
-        self.rect(bx, by, 4, bh, "F")
-        self.set_font("D", "B", 13)
-        self.set_text_color(*ROSE)
-        self.text(bx + 16, by + 14, "TA Feedback Points Addressed")
-        self.set_fill_color(*PINK1)
-        self.rect(bx + 16, by + 17, 60, 0.8, "F")
-
-        fb = [
-            "\u2713  Admin-definable hours per day",
-            "\u2713  Block dates for holidays",
-            "\u2713  Notifications on confirm & cancel",
-            "\u2713  Full booking history log",
-            "\u2713  Protected admin actions with auth",
-        ]
-        fx, fy = bx + 18, by + 26
-        for item in fb:
-            self.set_font("D", "", 11)
-            self.set_text_color(*GRAY)
-            self.text(fx, fy, item)
-            fy += 7
-
-    def slide_4(self):
-        self.add_page()
-        self._bg()
-        self._top_bar()
-        self._slide_num(4)
-        self._deco_circle(260, 185, 80, PINK1)
-        self._title_bar("Demo")
-
-        self.set_font("D", "", 11)
-        self.set_text_color(*GRAY)
-        self.text(30, 50, "Feature walkthrough of Version 2")
-
-        # 2 rows x 4 cols of feature cards
-        features = [
-            ("1", "Browse TA list and navigate", "week / month calendar views"),
-            ("2", "Create a booking with name,", "email, telegram, date, time"),
-            ("3", "Admin login to access", "management panel"),
-            ("4", "Set available hours per day", "of week for each TA"),
-            ("5", "Block specific dates for", "holidays with reasons"),
-            ("6", "View booking history log with", "full audit trail of actions"),
-            ("7", "Configure email & Telegram", "notification settings in UI"),
-            ("8", "Change admin password in the", "dedicated Security tab"),
-        ]
-        cols = 4
-        rows = 2
-        card_w = 64
-        card_h = 38
-        gap = 6
-        total_w = cols * card_w + (cols - 1) * gap
-        start_x = (W - total_w) / 2
-        start_y = 58
-
-        for idx, (num, line1, line2) in enumerate(features):
-            c = idx % cols
-            r = idx // cols
-            cx = start_x + c * (card_w + gap)
-            cy = start_y + r * (card_h + gap)
-            self._card(cx, cy, card_w, card_h)
-
-            # number badge
-            self.set_fill_color(*PINK4)
-            self.circle(cx + 7, cy + 7, 5.5, style="F")
-            self.set_font("D", "B", 9)
-            self.set_text_color(*WHITE)
-            self.text(cx + 4.5, cy + 10, num)
-
-            # text
-            self.set_font("D", "", 9)
-            self.set_text_color(*GRAY)
-            self.text(cx + 16, cy + 15, line1)
-            self.text(cx + 16, cy + 24, line2)
-
-        # live note
-        self.set_font("D", "B", 11)
-        self.set_text_color(*ROSE)
-        note = "Live: http://10.93.25.100:8000"
-        self.text(W / 2 - self.get_string_width(note) / 2, 195, note)
-
-    def slide_5(self):
-        self.add_page()
-        self._bg()
-        self._top_bar()
-        self._slide_num(5)
-        self._deco_circle(260, 185, 85, PINK1)
-        self._deco_circle(40, 180, 70, PINK2)
-        self._title_bar("Links")
-
-        # --- GitHub card ---
-        gx, gy, gw, gh = 50, 60, 85, 105
-        self._card(gx, gy, gw, gh)
-        self._qr(URL_GH, gx + gw / 2 - 18, gy + 10, 36)
-        self.set_font("D", "B", 12)
-        self.set_text_color(*ROSE)
-        gh_label = "GitHub Repository"
-        self.text(gx + gw / 2 - self.get_string_width(gh_label) / 2, gy + 58, gh_label)
-        self.set_font("D", "", 6)
-        self.set_text_color(*DIM)
-        self.text(gx + 6, gy + 68, URL_GH)
-        self.set_font("D", "", 8)
-        self.set_text_color(*GRAY)
-        scan_label = "Scan to open the repo"
-        self.text(gx + gw / 2 - self.get_string_width(scan_label) / 2, gy + 92, scan_label)
-
-        # --- Live product card ---
-        lx_c = W - 50 - gw
-        ly_c = 60
-        self._card(lx_c, ly_c, gw, gh)
-        self._qr(URL_LIVE, lx_c + gw / 2 - 18, ly_c + 10, 36)
-        self.set_font("D", "B", 12)
-        self.set_text_color(*ROSE)
-        live_label = "Deployed Product"
-        self.text(lx_c + gw / 2 - self.get_string_width(live_label) / 2, ly_c + 58, live_label)
-        self.set_font("D", "", 6)
-        self.set_text_color(*DIM)
-        self.text(lx_c + 10, ly_c + 68, URL_LIVE)
-        self.set_font("D", "", 8)
-        self.set_text_color(*GRAY)
-        scan2_label = "Scan to open the app"
-        self.text(lx_c + gw / 2 - self.get_string_width(scan2_label) / 2, ly_c + 92, scan2_label)
-
-        # --- Presentation card (center) ---
-        px, py, pw, ph = W / 2 - 40, 60, 80, 105
-        self._card(px, py, pw, ph)
-        self.set_fill_color(*PINK4)
-        self.rect(px, py, 4, ph, "F")
-        self.set_font("D", "B", 12)
-        self.set_text_color(*ROSE)
-        pres_label = "Presentation"
-        self.text(px + 14, py + 16, pres_label)
-        self.set_fill_color(*PINK1)
-        self.rect(px + 14, py + 19, 50, 0.8, "F")
-        self.set_font("D", "", 9)
-        self.set_text_color(*GRAY)
-        pres_lines = [
-            "5-slide PDF with:",
-            "",
-            "  1. Title & author info",
-            "  2. Context & problem",
-            "  3. Implementation",
-            "  4. Demo walkthrough",
-            "  5. Links & QR codes",
-            "",
-            "File: presentation.pdf",
-            "Source: gen_pdf.py",
-        ]
-        ply = py + 30
-        for line in pres_lines:
-            if line:
-                self.set_font("D", "", 9)
-                self.set_text_color(*GRAY)
-                self.text(px + 14, ply, line)
-            ply += 6.5
-
-        # thank you
-        self.set_font("D", "B", 24)
-        self.set_text_color(*ROSE)
-        ty_text = "Thank you!"
-        self.text(W / 2 - self.get_string_width(ty_text) / 2, 188, ty_text)
-
-
-# ── generate ─────────────────────────────────────────────────────
-pdf = PDF()
-pdf.slide_1()
-pdf.slide_2()
-pdf.slide_3()
-pdf.slide_4()
-pdf.slide_5()
-
-out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "presentation.pdf")
-pdf.output(out)
-print(f"PDF written to {out}  ({os.path.getsize(out) / 1024:.0f} KB)")
+if __name__ == "__main__":
+    build_presentation()
