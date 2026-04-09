@@ -314,7 +314,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## Presentation
 
-A 5-slide PDF presentation is included at [`presentation.pdf`](presentation.pdf). Open it with any PDF viewer. Slides cover:
+A 5-slide PDF presentation is included at [`presentationfinal2.0.pdf`](presentationfinal2.0.pdf). Open it with any PDF viewer. Slides cover:
 
 1. **Title** — Product name, author (Kamilla Iarullina), email, group (DSAI-03)
 2. **Context** — End users, problem, solution
@@ -322,4 +322,3 @@ A 5-slide PDF presentation is included at [`presentation.pdf`](presentation.pdf)
 4. **Demo** — Feature walkthrough description
 5. **Links** — GitHub repo and deployed product with QR codes
 
-To regenerate from source: `python3 gen_pdf.py`
