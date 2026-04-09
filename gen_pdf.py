@@ -389,7 +389,7 @@ def build_presentation():
     
     # URLs for QR codes
     GITHUB_URL = "https://github.com/kamillayarullina/se-toolkit-hackathon"
-    DEPLOYED_URL = "https://queue-less.onrender.com"
+    DEPLOYED_URL = "http://10.93.25.100:8000"
     
     doc = BaseDocTemplate(
         output_path,
